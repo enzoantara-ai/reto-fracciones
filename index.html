@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reto de Fracciones WHS</title>
+<style>
+  :root{
+    --blue:#1F4E79; --blue2:#2E6BB0; --orange:#C55A11; --green:#2E7D32;
+    --bg1:#EAF2FB; --bg2:#F4F9FF; --card:#ffffff; --red:#C0392B; --yellow:#FFF2CC;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',Arial,sans-serif;}
+  body{ min-height:100vh; background:linear-gradient(160deg,var(--bg2),var(--bg1));
+    display:flex; align-items:center; justify-content:center; padding:16px; color:#222;}
+  .app{ width:100%; max-width:640px; background:var(--card); border-radius:22px;
+    box-shadow:0 12px 40px rgba(31,78,121,.18); overflow:hidden;}
+  header{ background:linear-gradient(135deg,var(--blue2),var(--blue)); color:#fff;
+    padding:22px 24px; text-align:center;}
+  header h1{ font-size:1.5rem; letter-spacing:.5px;}
+  header p{ opacity:.9; font-size:.9rem; margin-top:4px;}
+  .body{ padding:24px;}
+  /* HUD */
+  .hud{ display:flex; justify-content:space-between; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  .chip{ flex:1; min-width:90px; background:var(--bg1); border-radius:12px; padding:10px;
+    text-align:center;}
+  .chip b{ display:block; font-size:1.3rem; color:var(--blue);}
+  .chip span{ font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; color:#666;}
+  .bar{ height:8px; background:#e3ecf6; border-radius:6px; overflow:hidden; margin-bottom:18px;}
+  .bar>i{ display:block; height:100%; width:0; background:linear-gradient(90deg,var(--orange),var(--green));
+    transition:width .4s;}
+  .qbox{ background:var(--yellow); border-left:6px solid var(--orange); border-radius:12px;
+    padding:18px; font-size:1.12rem; line-height:1.45; margin-bottom:18px; min-height:84px;}
+  .opts{ display:grid; gap:12px;}
+  .opt{ border:2px solid #d4e0ee; background:#fff; border-radius:14px; padding:15px 16px;
+    font-size:1.05rem; text-align:left; cursor:pointer; transition:.15s; color:#222;}
+  .opt:hover{ border-color:var(--blue2); transform:translateY(-2px); box-shadow:0 6px 14px rgba(31,78,121,.12);}
+  .opt.correct{ border-color:var(--green); background:#E2EFDA; font-weight:bold;}
+  .opt.wrong{ border-color:var(--red); background:#FDEDED;}
+  .opt:disabled{ cursor:default;}
+  .feedback{ margin-top:16px; padding:14px 16px; border-radius:12px; font-size:.98rem;
+    display:none; line-height:1.4;}
+  .feedback.show{ display:block;}
+  .feedback.ok{ background:#E2EFDA; border-left:5px solid var(--green); color:#1e5e22;}
+  .feedback.no{ background:#FDEDED; border-left:5px solid var(--red); color:#922;}
+  .btn{ display:block; width:100%; margin-top:16px; border:none; border-radius:14px;
+    background:linear-gradient(135deg,var(--blue2),var(--blue)); color:#fff; padding:15px;
+    font-size:1.05rem; font-weight:bold; cursor:pointer; transition:.15s;}
+  .btn:hover{ filter:brightness(1.08);}
+  .btn.hidden{ display:none;}
+  /* start & end */
+  .center{ text-align:center; padding:10px 4px;}
+  .center .big{ font-size:3rem; margin:6px 0;}
+  .center h2{ color:var(--blue); margin-bottom:8px;}
+  .center p{ color:#555; margin-bottom:6px; line-height:1.5;}
+  .hearts{ font-size:1.1rem; letter-spacing:2px;}
+  .scoreline{ font-size:2.2rem; font-weight:bold; color:var(--orange); margin:10px 0;}
+  .medal{ font-size:1.1rem; font-weight:bold; padding:8px 14px; border-radius:30px;
+    display:inline-block; margin:8px 0;}
+  footer{ text-align:center; font-size:.72rem; color:#88a; padding:12px; font-style:italic;}
+  .rules{ text-align:left; background:var(--bg1); border-radius:12px; padding:14px 18px;
+    margin:14px 0; font-size:.92rem; line-height:1.5; color:#445;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🧮 Reto de Fracciones WHS</h1>
+    <p>Problemas con fracciones · 6.° Primaria</p>
+  </header>
+  <div class="body" id="body"></div>
+  <footer>"Hoy pequeños emprendedores, mañana grandes líderes" — Prof. Enzo Antara</footer>
+</div>
+
+<script>
+// ===== Banco de preguntas (basadas en la ficha + variantes) =====
+const BANK = [
+  { q:"Benjamín tiene 400 manzanas y vende 3/8 del total. ¿Cuántas le quedan por vender?",
+    opts:["250 manzanas","150 manzanas","300 manzanas","350 manzanas"], a:0,
+    exp:"Vende 400÷8×3 = 150. Le quedan 400 − 150 = 250." },
+  { q:"Sebastián vende 3/8 de 800 manzanas a ochenta céntimos (S/ 0,80) cada una. ¿Cuánto recaudó?",
+    opts:["S/ 240","S/ 300","S/ 24","S/ 2 400"], a:0,
+    exp:"Vende 800÷8×3 = 300 manzanas. 300 × 0,80 = S/ 240. ¡Ojo! 80 céntimos = S/ 0,80." },
+  { q:"En un salón de 48 alumnos, los 3/8 son varones. ¿Cuántas MUJERES hay?",
+    opts:["30 mujeres","18 mujeres","24 mujeres","16 mujeres"], a:0,
+    exp:"Varones = 48÷8×3 = 18. Mujeres = 48 − 18 = 30." },
+  { q:"Un ingeniero reparó los 2/7 de 2 800 km de carretera. ¿Cuántos km FALTAN reparar?",
+    opts:["2 000 km","800 km","2 800 km","1 400 km"], a:0,
+    exp:"Reparó 2 800÷7×2 = 800. Faltan 2 800 − 800 = 2 000." },
+  { q:"Un padre reparte S/ 200: 3/5 al primero y 3/10 al segundo. ¿Cuánto recibe el TERCER hijo?",
+    opts:["S/ 20","S/ 60","S/ 120","S/ 40"], a:0,
+    exp:"Primero=120, segundo=60. Tercero = 200 − 120 − 60 = S/ 20 (1/10 del total)." },
+  { q:"Gasto 1/5 de mi dinero y aún me quedan S/ 20. ¿Cuánto tenía al inicio? (problema inverso)",
+    opts:["S/ 25","S/ 100","S/ 4","S/ 24"], a:0,
+    exp:"Me queda 4/5 = S/ 20, entonces 1/5 = S/ 5. Total = 5×5 = S/ 25." },
+  // variantes extra para rejugabilidad
+  { q:"María tiene 600 caramelos y regala 2/3. ¿Cuántos le quedan?",
+    opts:["200 caramelos","400 caramelos","300 caramelos","100 caramelos"], a:0,
+    exp:"Regala 600÷3×2 = 400. Le quedan 600 − 400 = 200." },
+  { q:"Un depósito de 350 L está lleno hasta sus 4/7. ¿Cuántos litros tiene?",
+    opts:["200 L","150 L","250 L","280 L"], a:0,
+    exp:"350÷7×4 = 50×4 = 200 L." },
+  { q:"Leí 3/5 de un libro de 240 páginas. ¿Cuántas páginas me FALTAN?",
+    opts:["96 páginas","144 páginas","120 páginas","48 páginas"], a:0,
+    exp:"Leí 240÷5×3 = 144. Faltan 240 − 144 = 96." },
+  { q:"Pagué 3/4 de una deuda y aún debo S/ 90. ¿De cuánto era la deuda? (inverso)",
+    opts:["S/ 360","S/ 120","S/ 270","S/ 30"], a:0,
+    exp:"Debo 1/4 = S/ 90, entonces el total = 90 × 4 = S/ 360." },
+];
+
+const TOTAL_Q = 6;   // preguntas por partida
+let pool=[], idx=0, score=0, streak=0, lives=3, answered=false;
+const body = document.getElementById('body');
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function startScreen(){
+  body.innerHTML = `
+    <div class="center">
+      <div class="big">🎯</div>
+      <h2>¡Bienvenido al Reto!</h2>
+      <div class="rules">
+        <b>¿Cómo se juega?</b><br>
+        • Responde ${TOTAL_Q} problemas de fracciones.<br>
+        • Tienes <b>3 vidas</b> ❤️❤️❤️ — pierdes una por cada error.<br>
+        • Ganas puntos por acierto y <b>bonus por racha</b> 🔥.<br>
+        • Cada partida baraja las preguntas: ¡puedes jugar las veces que quieras!
+      </div>
+      <button class="btn" onclick="startGame()">▶ ¡Empezar a jugar!</button>
+    </div>`;
+}
+
+function startGame(){
+  pool = shuffle([...BANK]).slice(0, TOTAL_Q);
+  idx=0; score=0; streak=0; lives=3; answered=false;
+  renderQ();
+}
+
+function renderQ(){
+  answered=false;
+  const item = pool[idx];
+  const order = shuffle(item.opts.map((t,i)=>({t,correct:i===item.a})));
+  const hearts = "❤️".repeat(lives) + "🤍".repeat(3-lives);
+  const pct = Math.round((idx/TOTAL_Q)*100);
+  body.innerHTML = `
+    <div class="hud">
+      <div class="chip"><b>${score}</b><span>Puntos</span></div>
+      <div class="chip"><b>${idx+1}/${TOTAL_Q}</b><span>Pregunta</span></div>
+      <div class="chip"><b>${streak}🔥</b><span>Racha</span></div>
+      <div class="chip"><b class="hearts">${hearts}</b><span>Vidas</span></div>
+    </div>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    <div class="qbox">${item.q}</div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="fb"></div>
+    <button class="btn hidden" id="next">Siguiente ▶</button>`;
+  const opts = document.getElementById('opts');
+  order.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='opt'; b.textContent=o.t;
+    b.onclick=()=>choose(b,o.correct,item.exp,order);
+    opts.appendChild(b);
+  });
+}
+
+function choose(btn, correct, exp, order){
+  if(answered) return; answered=true;
+  const opts=[...document.querySelectorAll('.opt')];
+  opts.forEach((b,i)=>{ b.disabled=true; if(order[i].correct) b.classList.add('correct'); });
+  const fb=document.getElementById('fb');
+  if(correct){
+    streak++; const bonus = streak>=3?15:(streak===2?10:0);
+    score += 10 + bonus;
+    fb.className='feedback ok show';
+    fb.innerHTML = `✅ <b>¡Correcto!</b> +${10+bonus} pts${bonus?` (bonus de racha 🔥)`:''}<br>${exp}`;
+  } else {
+    btn.classList.add('wrong'); streak=0; lives--;
+    fb.className='feedback no show';
+    fb.innerHTML = `❌ <b>Incorrecto.</b><br>${exp}`;
+  }
+  const next=document.getElementById('next');
+  next.classList.remove('hidden');
+  next.textContent = (idx+1>=TOTAL_Q || lives<=0) ? "Ver resultado 🏁" : "Siguiente ▶";
+  next.onclick=()=>{ if(lives<=0){ endScreen(false);} else if(idx+1>=TOTAL_Q){ endScreen(true);} else { idx++; renderQ(); } };
+}
+
+function endScreen(finished){
+  const maxBase = TOTAL_Q*10;
+  let medal, color, emoji, msg;
+  const ratio = score/maxBase;
+  if(!finished){ medal="¡Sigue practicando!"; color="var(--red)"; emoji="💪"; msg="Te quedaste sin vidas, ¡pero cada intento te hace mejor!"; }
+  else if(ratio>=1.2){ medal="🏆 ¡Maestro de las Fracciones!"; color="var(--green)"; emoji="🏆"; msg="¡Excelente! Dominas la fracción de una cantidad."; }
+  else if(ratio>=0.8){ medal="🥈 ¡Muy bien!"; color="var(--blue)"; emoji="🎉"; msg="Buen trabajo, ya casi eres un experto."; }
+  else { medal="🥉 ¡Buen intento!"; color="var(--orange)"; emoji="🙂"; msg="Repasa el mapa conceptual y vuelve a intentarlo."; }
+  body.innerHTML = `
+    <div class="center">
+      <div class="big">${emoji}</div>
+      <h2>Resultado final</h2>
+      <div class="scoreline">${score} puntos</div>
+      <div class="medal" style="background:${color};color:#fff;">${medal}</div>
+      <p>${msg}</p>
+      <p>Vidas restantes: <span class="hearts">${"❤️".repeat(Math.max(lives,0))}${"🤍".repeat(3-Math.max(lives,0))}</span></p>
+      <button class="btn" onclick="startGame()">🔄 Jugar otra vez</button>
+      <button class="btn" style="background:linear-gradient(135deg,#888,#555)" onclick="startScreen()">🏠 Inicio</button>
+    </div>`;
+}
+
+startScreen();
+</script>
+</body>
+</html>
